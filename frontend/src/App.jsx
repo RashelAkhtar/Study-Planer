@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import SignIn from "./components/SignIn";
-import ToDoList from "./components/To-Do-List";
+import HomePage from "./components/pages/HomePage";
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
@@ -35,7 +35,7 @@ function App() {
         />
         <Route 
           path="/dashboard" 
-          element={isAuthenticated ? <ToDoList /> : <Navigate to="/login" replace />} 
+          element={isAuthenticated ? <HomePage /> : <Navigate to="/login" replace />} 
         />
         <Route path="/" element={<Navigate to="/login" replace />} />
       </Routes>

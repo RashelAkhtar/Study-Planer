@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 
 function SignUp({ onSignUpSuccess }) {
-  const API = import.meta.VITE_API;
+  const API = import.meta.env.VITE_API;
 
   const [form, setForm] = useState({
     username: "",

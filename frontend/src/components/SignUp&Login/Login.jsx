@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 function Login({ onLoginSuccess }) {
-  const API = import.meta.VITE_API;
+  const API = import.meta.env.VITE_API;
 
   const [form, setForm] = useState({
     email: "",
