@@ -1,9 +1,8 @@
 import React, { useState } from "react";
-import "../styles/NoteTaking.css"
+import "../styles/NoteTaking.css";
+import axios from "../../../api/axiosInstance";
 
 function NoteTaking() {
-  const API = import.meta.env.VITE_API;
-
   const [note, setNote] = useState({
     title: "",
     content: "",
@@ -15,31 +14,25 @@ function NoteTaking() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const noteData = {title: note.title, content: note.content}
+    const noteData = { title: note.title, content: note.content };
 
     try {
-      const response = await fetch(`${API}/api/notes`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(noteData),
-      });
+      // using configured axios instance (baseURL from VITE_API)
+      const response = await axios.post("/api/notes", noteData);
 
-      if (response.ok) {
-        const result = await response.json();
+      if (response.status >= 200 && response.status < 300) {
+        const result = response.data;
         console.log("Success: ", result);
 
         // Clear input field after submit
-    setNote({title: "", content: ""})
+        setNote({ title: "", content: "" });
       } else {
-        const err = await response.json();
-        throw new Error(err.message || "Failed")
+        throw new Error(response.data?.message || "Failed to add note");
       }
     } catch (err) {
-      console.error("Error: ", err);
+      // show server error if available
+      console.error("Error: ", err.response?.data || err.message || err);
     }
-    
   };
 
   return (

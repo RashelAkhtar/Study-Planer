@@ -1,8 +1,7 @@
 import React, { useState } from "react";
+import axios from "../../../api/axiosInstance";
 
 function SignUp({ onSignUpSuccess }) {
-  const API = import.meta.env.VITE_API;
-
   const [form, setForm] = useState({
     username: "",
     email: "",
@@ -31,32 +30,24 @@ function SignUp({ onSignUpSuccess }) {
     };
 
     try {
-      const response = await fetch(`${API}/api/register`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formdata),
-      });
+      const response = await axios.post("/api/register", formdata);
 
-      if (response.ok) {
-        const result = await response.json();
-        console.log("Success: ", result);
-        
-        // Clear form
-        setForm({ username: "", email: "", password: "" });
-        
-        // Switch to login tab after successful signup
-        if (onSignUpSuccess) {
-          onSignUpSuccess();
-        }
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Signup failed");
+      console.log("Success: ", response.data);
+
+      // Clear form
+      setForm({ username: "", email: "", password: "" });
+
+      // Switch to login tab after successful signup
+      if (onSignUpSuccess) {
+        onSignUpSuccess();
       }
     } catch (err) {
       console.error("Error: ", err);
-      setError(err.message || "Failed to sign up. Please try again.");
+      const errorMessage =
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to sign up. Please try again";
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

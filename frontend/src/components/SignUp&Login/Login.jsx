@@ -1,9 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "../../../api/axiosInstance.js";
 
 function Login({ onLoginSuccess }) {
-  const API = import.meta.env.VITE_API;
-
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -21,6 +20,8 @@ function Login({ onLoginSuccess }) {
     setError(""); // Clear error on input change
   };
 
+  // ... existing code ...
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -32,50 +33,44 @@ function Login({ onLoginSuccess }) {
     };
 
     try {
-      const response = await fetch(`${API}/api/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
+      const response = await axios.post("/api/login", formData);
 
-      if (response.ok) {
-        const result = await response.json();
-        console.log("Login successful!", result);
-        
-        // Store user data if provided
-        if (result.user) {
-          localStorage.setItem('user', JSON.stringify(result.user));
+      // Axios automatically throws errors for 4xx/5xx, so if we get here, it's successful
+      const result = response.data;
+      console.log("Login successful!", result);
+
+      // Store user data if provided
+      if (result.user) {
+        localStorage.setItem("user", JSON.stringify(result.user));
+      }
+
+      // Store token - if backend doesn't provide one, create a simple one
+      // This is a temporary solution until JWT is implemented
+      const token = result.token || `token_${Date.now()}_${form.email}`;
+      localStorage.setItem("token", token);
+
+      // Ensure token is stored before proceeding
+      if (localStorage.getItem("token")) {
+        // Dispatch custom event to notify App component
+        window.dispatchEvent(new Event("auth-changed"));
+
+        // Call the success callback to update App state
+        if (onLoginSuccess) {
+          onLoginSuccess(result);
         }
-        
-        // Store token - if backend doesn't provide one, create a simple one
-        // This is a temporary solution until JWT is implemented
-        const token = result.token || `token_${Date.now()}_${form.email}`;
-        localStorage.setItem('token', token);
-        
-        // Ensure token is stored before proceeding
-        if (localStorage.getItem('token')) {
-          // Dispatch custom event to notify App component
-          window.dispatchEvent(new Event('auth-changed'));
-          
-          // Call the success callback to update App state
-          if (onLoginSuccess) {
-            onLoginSuccess(result);
-          }
-          
-          // Navigate to dashboard
-          navigate("/dashboard", { replace: true });
-        } else {
-          throw new Error("Failed to store authentication token");
-        }
+
+        // Navigate to dashboard
+        navigate("/dashboard", { replace: true });
       } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Login failed");
+        throw new Error("Failed to store authentication token");
       }
     } catch (err) {
       console.error("Error", err);
-      setError(err.message || "Login failed. Please try again.");
+      const errorMessage =
+        err.response?.data?.message ||
+        err.message ||
+        "Login failed. Please try again.";
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
