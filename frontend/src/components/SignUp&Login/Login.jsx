@@ -20,8 +20,6 @@ function Login({ onLoginSuccess }) {
     setError(""); // Clear error on input change
   };
 
-  // ... existing code ...
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");

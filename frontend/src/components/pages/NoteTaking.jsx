@@ -1,66 +1,135 @@
-import React, { useState } from "react";
-import "../styles/NoteTaking.css";
+import { useEffect, useState } from "react";
 import axios from "../../../api/axiosInstance";
+import "../styles/NoteTaking.css";
 
-function NoteTaking() {
-  const [note, setNote] = useState({
-    title: "",
-    content: "",
-  });
+const emptyNote = { title: "", content: "" };
 
-  const handleInput = (e) => {
-    setNote({ ...note, [e.target.name]: e.target.value });
-  };
+export default function NoteTaking() {
+  const [notes, setNotes] = useState([]);
+  const [activeNote, setActiveNote] = useState(emptyNote);
+  const [editingId, setEditingId] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const noteData = { title: note.title, content: note.content };
+  useEffect(() => {
+    loadNotes();
+  }, []);
 
+  const loadNotes = async () => {
     try {
-      // using configured axios instance (baseURL from VITE_API)
-      const response = await axios.post("/api/notes", noteData);
-
-      if (response.status >= 200 && response.status < 300) {
-        const result = response.data;
-        console.log("Success: ", result);
-
-        // Clear input field after submit
-        setNote({ title: "", content: "" });
-      } else {
-        throw new Error(response.data?.message || "Failed to add note");
-      }
-    } catch (err) {
-      // show server error if available
-      console.error("Error: ", err.response?.data || err.message || err);
+      setLoading(true);
+      const { data } = await axios.get("/api/notes");
+      setNotes(data.notes ?? []);
+    } catch {
+      setError("Failed to load notes");
+    } finally {
+      setLoading(false);
     }
   };
 
+  const isValid = (note) => note.title.trim() || note.content.trim();
+
+  const submitNote = async (e) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!isValid(activeNote)) {
+      setError("Note cannot be empty");
+      return;
+    }
+
+    try {
+      if (editingId) {
+        await axios.put(`/api/notes/${editingId}`, activeNote);
+        setNotes((prev) =>
+          prev.map((n) => (n.id === editingId ? { ...n, ...activeNote } : n))
+        );
+      } else {
+        const { data } = await axios.post("/api/notes", activeNote);
+        setNotes((prev) => [data.note, ...prev]);
+      }
+
+      resetForm();
+    } catch {
+      setError("Failed to save note");
+    }
+  };
+
+  const editNote = (note) => {
+    setEditingId(note.id);
+    setActiveNote({ title: note.title, content: note.content });
+  };
+
+  const deleteNote = async (id) => {
+    if (!window.confirm("Delete this note permanently?")) return;
+
+    const backup = notes;
+    setNotes((prev) => prev.filter((n) => n.id !== id));
+
+    try {
+      await axios.delete(`/api/notes/${id}`);
+    } catch {
+      setNotes(backup);
+      setError("Delete failed");
+    }
+  };
+
+  const resetForm = () => {
+    setEditingId(null);
+    setActiveNote(emptyNote);
+  };
+
   return (
-    <div className="note-container">
-      <form onSubmit={handleSubmit}>
-        <input
-          placeholder="Title"
-          value={note.title}
-          name="title"
-          className="note-title"
-          onChange={handleInput}
-          type="text"
-          required
-        />
+    <div className="app-container">
+      <aside className="sidebar">
+        <h2>Notes</h2>
+        <button className="new-note" onClick={resetForm}>+ New Note</button>
 
-        <textarea
-          placeholder="Content"
-          value={note.content}
-          name="content"
-          className="note-content"
-          onChange={handleInput}
-          required
-        />
+        {loading ? (
+          <p className="status">Loading…</p>
+        ) : (
+          notes.map((n) => (
+            <div key={n.id} className="note-item" onClick={() => editNote(n)}>
+              <strong>{n.title || "Untitled"}</strong>
+              <span>{new Date(n.created_at).toLocaleDateString()}</span>
+            </div>
+          ))
+        )}
+      </aside>
 
-        <button type="submit">Add Note</button>
-      </form>
+      <main className="editor">
+        <form onSubmit={submitNote} className="editor-form">
+          <input
+            placeholder="Title"
+            value={activeNote.title}
+            onChange={(e) => setActiveNote({ ...activeNote, title: e.target.value })}
+          />
+          <textarea
+            placeholder="Write your note here…"
+            value={activeNote.content}
+            onChange={(e) => setActiveNote({ ...activeNote, content: e.target.value })}
+          />
+
+          {error && <p className="error">{error}</p>}
+
+          <div className="actions">
+            <button type="submit" className="primary">
+              {editingId ? "Update" : "Save"}
+            </button>
+            {editingId && (
+              <button type="button" onClick={resetForm} className="secondary">
+                Cancel
+              </button>
+            )}
+          </div>
+        </form>
+
+        {editingId && (
+          <button className="delete" onClick={() => deleteNote(editingId)}>
+            Delete Note
+          </button>
+        )}
+      </main>
     </div>
   );
 }
-
-export default NoteTaking;
